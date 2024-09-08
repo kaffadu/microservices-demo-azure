@@ -134,12 +134,13 @@ jobs:
         run: |
           az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP_NAME }} --name ${{ env.AKS_CLUSTER_NAME }}
 
-      - name: Deploy to AKS
-        uses: ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
 
-        with:
-          images: "${{ needs.build-and-push.outputs.images }}" 
+  final-deployment-aks:
+    needs: deploy-to-aks   # Wait for the build-and-push job to complete
+    uses: ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
+    with:
+      images: "${{ needs.build-and-push.outputs.images }}" 
 
-      - name: Azure CLI logout
-        run: |
-          az logout
+      # - name: Azure CLI logout
+      #   run: |
+      #     az logout
