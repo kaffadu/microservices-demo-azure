@@ -341,5 +341,6 @@ jobs:
           for service in "${services[@]}"; do
             echo "Deploying $service"
             kubectl apply -f kubernetes-manifests/$service.yaml
+            kubectl set image deployment/$service server=$service:latest --namespace ${{ env.AKS_NAMESPACE }}
             echo "Deployed $service"
           done
