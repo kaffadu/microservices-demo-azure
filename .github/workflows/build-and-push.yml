@@ -135,19 +135,9 @@ jobs:
           az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP_NAME }} --name ${{ env.AKS_CLUSTER_NAME }}
 
       - name: Deploy to AKS
-#       uses: ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
-        uses: azure/k8s-deploy@v3
+        uses: microservices-demo-azure/.github/workflows/deploy-to-aks.yml # ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
         with:
-          action: deploy
-          namespace: ${{ env.AKS_NAMESPACE }}
-          manifests: |
-            ./.github/workflows/deploy-to-aks.yml
-          images: |
-            ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:latest
-          imagepullsecrets: |
-            ${{ env.ACR_NAME }}-secret
-#        with:
-#          images: "${{ needs.build-and-push.outputs.images }}" 
+          images: "${{ needs.build-and-push.outputs.images }}" 
 
       - name: Azure CLI logout
         run: |
