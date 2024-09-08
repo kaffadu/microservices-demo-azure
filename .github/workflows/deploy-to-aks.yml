@@ -1,31 +1,106 @@
+# name: Deploy to AKS
+
+# on:
+#   workflow_call:
+#     inputs:
+#       images:
+#         required: true
+#         type: string
+#     secrets:
+#       AZURE_CLIENT_ID:
+#         required: true
+#       AZURE_TENANT_ID:
+#         required: true
+#       AZURE_SUBSCRIPTION_ID:
+#         required: true
+
+# env:
+#   AKS_NAMESPACE: 'default' # Replace if you use a different namespace
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Deploy each image
+#         run: |
+#           for service in ${{ inputs.images }}; do
+#             echo "Deploying $service"
+#             kubectl apply -f kubernetes-manifests/$service.yaml 
+#             kubectl set image deployment/$service server=$service:latest --namespace ${{ env.AKS_NAMESPACE }}
+#             echo "Deployed $service"
+#           done
+
+
 name: Deploy to AKS
 
 on:
-  workflow_call:
-    inputs:
-      images:
-        required: true
-        type: string
-    secrets:
-      AZURE_CLIENT_ID:
-        required: true
-      AZURE_TENANT_ID:
-        required: true
-      AZURE_SUBSCRIPTION_ID:
-        required: true
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
-  AKS_NAMESPACE: 'default' # Replace if you use a different namespace
+  AKS_NAMESPACE: 'default'
+  ACR_NAME: 'premierhubtech'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.head_branch == 'main' }}  # Ensure the job only runs for the dev-new branch az ad sp show --id <SP_CLIENT_ID> --query objectId --output tsv
     steps:
-      - name: Deploy each image
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Azure CLI
         run: |
-          for service in ${{ inputs.images }}; do
-            echo "Deploying $service"
-            kubectl apply -f kubernetes-manifests/$service.yaml 
-            kubectl set image deployment/$service server=$service:latest --namespace ${{ env.AKS_NAMESPACE }}
-            echo "Deployed $service"
-          done
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - name: Verify Azure CLI installation
+        run: |
+          az --version
+
+      - name: Log in to Azure
+        uses: azure/login@v1.4.7
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials --resource-group microservices-demo-rg --name microservices-demo-aks --overwrite-existing
+
+      - name: Verify kubectl context
+        run: |
+          kubectl config current-context
+
+      - name: Deploy all services
+        run: |
+          echo "Deploying all services using release/project-kubernetes-manifests.yaml"
+          kubectl apply -f release/project-kubernetes-manifests.yaml
+      
+      - name: Update image tags for each service
+        run: |
+          echo "Updating image tags for all services to ${{ github.event.inputs.image_tag }}"
+          kubectl set image deployment/currencyservice server=premierhubtech.azurecr.io/currencyservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/adservice server=premierhubtech.azurecr.io/adservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/cartservice server=premierhubtech.azurecr.io/cartservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/checkoutservice server=premierhubtech.azurecr.io/checkoutservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/emailservice server=premierhubtech.azurecr.io/emailservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/frontend server=premierhubtech.azurecr.io/frontend:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }} 
+          kubectl set image deployment/loadgenerator main=premierhubtech.azurecr.io/loadgenerator:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }} 
+          kubectl set image deployment/paymentservice server=premierhubtech.azurecr.io/paymentservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/productcatalogservice server=premierhubtech.azurecr.io/productcatalogservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/recommendationservice server=premierhubtech.azurecr.io/recommendationservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/shippingservice server=premierhubtech.azurecr.io/shippingservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          kubectl set image deployment/shoppingassistantservice server=premierhubtech.azurecr.io/shoppingassistantservice:${{ github.event.inputs.image_tag }} --namespace ${{ env.AKS_NAMESPACE }}
+          
+      - name: Azure CLI logout
+        run: |
+          az logout
