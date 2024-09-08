@@ -13,8 +13,8 @@ env:
   AZURE_REGION: 'uksouth'
   ACR_NAME: 'premierhubtech'
   RESOURCE_GROUP_NAME: 'microservices-demo-rg'
-  AKS_CLUSTER_NAME: 'microservices-demo-aks'  # Replace with your AKS cluster name
-  AKS_NAMESPACE: 'default'                    # Replace if you use a different namespace
+  AKS_CLUSTER_NAME: 'microservices-demo-aks'
+  AKS_NAMESPACE: 'default'
 
 jobs:
   build-and-push:
@@ -24,7 +24,7 @@ jobs:
       matrix:
         service:
           - src/adservice
-          - src/cartservice/src 
+          - src/cartservice
           - src/checkoutservice
           - src/currencyservice
           - src/emailservice
@@ -36,7 +36,7 @@ jobs:
           - src/shippingservice
           - src/shoppingassistantservice
     outputs:
-      images: ${{ steps.set-images-output.outputs.images }} # Output the built images
+      images: ${{ steps.collect-images.outputs.images }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -74,7 +74,7 @@ jobs:
 
           cd $DOCKERFILE_PATH
 
-          if [ "${{ matrix.service }}" == "src/cartservice/src" ]; then
+          if [ "${{ matrix.service }}" == "src/cartservice" ]; then
             IMAGE_NAME=${{ env.ACR_NAME }}.azurecr.io/cartservice
           else
             IMAGE_NAME=${{ env.ACR_NAME }}.azurecr.io/$(basename ${{ matrix.service }})
@@ -90,28 +90,18 @@ jobs:
           docker build -t $IMAGE_NAME:latest .
           docker push $IMAGE_NAME:latest
 
-      - id: set-images-output 
-        run: echo "images=$(echo ${{ matrix.service }} | sed 's/src\///g' | sed 's/\/src//g')" >> $GITHUB_OUTPUT
-
-      - name: Azure CLI logout
-        run: |
-          az logout
+      - id: collect-images
+        run: echo "images=${{ steps.collect-images.outputs.images }} $IMAGE_NAME:latest" >> $GITHUB_ENV
 
   deploy-to-aks:
     runs-on: ubuntu-latest
     needs: build-and-push
-    env:
-      AZURE_REGION: 'uksouth'
-      ACR_NAME: 'premierhubtech'
-      RESOURCE_GROUP_NAME: 'microservices-demo-rg'
-      AKS_CLUSTER_NAME: 'microservices-demo-aks'
-      AKS_NAMESPACE: 'default'
     steps:
       - name: Checkout code 
         uses: actions/checkout@v3
 
       - name: Get built images
-        run: echo "${{ needs.build-and-push.outputs.images }}" 
+        run: echo "Images to deploy: ${{ env.images }}" 
 
       - name: Install Azure CLI
         run: |
@@ -134,9 +124,10 @@ jobs:
 
       - name: Deploy each image
         run: |
-          for service in ${{ needs.build-and-push.outputs.images }}; do
+          for image in ${{ env.images }}; do
+            service=$(echo $image | awk -F '/' '{print $NF}' | awk -F ':' '{print $1}')
             echo "Deploying $service"
             kubectl apply -f kubernetes-manifests/$service.yaml 
-            kubectl set image deployment/$service server=$service:latest --namespace ${{ env.AKS_NAMESPACE }}
+            kubectl set image deployment/$service server=$image --namespace ${{ env.AKS_NAMESPACE }}
             echo "Deployed $service"
           done
