@@ -135,7 +135,7 @@ jobs:
           az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP_NAME }} --name ${{ env.AKS_CLUSTER_NAME }}
 
       - name: Deploy to AKS
-        uses: microservices-demo-azure/.github/workflows/deploy-to-aks.yml # ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
+        uses: https://github.com/kaffadu/microservices-demo-azure/blob/main/.github/workflows/deploy-to-aks.yml # ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
         with:
           images: "${{ needs.build-and-push.outputs.images }}" 
 
