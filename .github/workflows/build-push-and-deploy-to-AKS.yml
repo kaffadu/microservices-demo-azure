@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Get built images
-        run: echo "Images to deploy: ${{ env.images }}" 
+        run: echo ${{ needs.build-and-push.outputs.images }}" >> $GITHUB_ENV
 
       - name: Install Azure CLI
         run: |
@@ -124,7 +124,7 @@ jobs:
 
       - name: Deploy each image
         run: |
-          for image in ${{ env.images }}; do
+          for image in ${{ needs.build-and-push.outputs.images }}; do
             service=$(echo $image | awk -F '/' '{print $NF}' | awk -F ':' '{print $1}')
             echo "Deploying $service"
             kubectl apply -f kubernetes-manifests/$service.yaml 
