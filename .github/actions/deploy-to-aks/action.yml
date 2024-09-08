@@ -15,4 +15,6 @@ runs:
           kubectl set image deployment/$service server=$service:latest --namespace ${{ env.AKS_NAMESPACE }}
           echo "Deployed $service"
         done
+    - name: Scale deployment
+      shell: bash # Added this line to specify the shell
 
