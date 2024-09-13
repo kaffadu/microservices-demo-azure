@@ -133,10 +133,20 @@ jobs:
         run: |
           az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP_NAME }} --name ${{ env.AKS_CLUSTER_NAME }} --overwrite-existing
 
-      - name: Deploy to AKS
-        uses: ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
-        with:
-          images: "${{ needs.build-and-push.outputs.images }}" 
+      - name: Deploy all services
+        run: |
+          for service in ${{ inputs.images }}; do
+            echo "Deploying $service"
+            kubectl apply -f kubernetes-manifests/$service.yaml 
+            kubectl set image deployment/$service server=$service:latest --namespace ${{ env.AKS_NAMESPACE }}
+            echo "Deployed $service"
+          done
+
+
+      # - name: Deploy to AKS
+      #   uses: ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
+      #   with:
+      #     images: "${{ needs.build-and-push.outputs.images }}" 
 
       - name: Azure CLI logout
         run: |
