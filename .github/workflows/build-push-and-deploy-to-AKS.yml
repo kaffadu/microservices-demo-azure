@@ -282,6 +282,7 @@ jobs:
           fi
           docker build -t $IMAGE_NAME:latest .
           docker push $IMAGE_NAME:latest
+          
       - id: set-images-output
         run: |
           # Initialize an empty array to store the image names
