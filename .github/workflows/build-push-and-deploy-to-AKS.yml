@@ -282,7 +282,7 @@ jobs:
           fi
           docker build -t $IMAGE_NAME:latest .
           docker push $IMAGE_NAME:latest
-          
+
       - id: set-images-output
         run: |
           # Initialize an empty array to store the image names
@@ -340,8 +340,9 @@ jobs:
 
           # Iterate over each service and deploy it
           for service in "${services[@]}"; do
-            echo "Deploying $service"
-            kubectl apply -f kubernetes-manifests/$service.yaml
+            service_name=$(echo $service | sed 's|${{ env.ACR_NAME }}.azurecr.io/||')
+            echo "Deploying $service_name"
+            kubectl apply -f kubernetes-manifests/$service_name.yaml
             kubectl set image deployment/$service server=$service:latest --namespace ${{ env.AKS_NAMESPACE }}
-            echo "Deployed $service"
+            echo "Deployed $service_name"
           done
