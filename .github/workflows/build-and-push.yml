@@ -104,7 +104,7 @@ jobs:
       AZURE_REGION: 'uksouth'
       ACR_NAME: 'premierhubtech'
       RESOURCE_GROUP_NAME: 'microservices-demo-rg'
-      AKS_CLUSTER_NAME: 'your-aks-cluster-name'  # Replace with your AKS cluster name
+      AKS_CLUSTER_NAME: 'microservices-demo-aks'  # Replace with your AKS cluster name
       AKS_NAMESPACE: 'default'                    # Replace if you use a different namespace
     steps:
       - name: Checkout code 
@@ -131,7 +131,7 @@ jobs:
       - name: Get AKS Credentials (if needed for private ACR)
         # Only needed if your ACR is private and requires authentication for AKS to pull images
         run: |
-          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP_NAME }} --name ${{ env.AKS_CLUSTER_NAME }}
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP_NAME }} --name ${{ env.AKS_CLUSTER_NAME }} --overwrite-existing
 
       - name: Deploy to AKS
         uses: ./.github/workflows/deploy-to-aks.yml # Use the separate deployment workflow
